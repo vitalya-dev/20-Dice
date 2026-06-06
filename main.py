@@ -1,4 +1,5 @@
 import numpy as np
+from pathlib import Path
 
 def get_icosahedron_data():
     # Вычисляем пропорцию золотого сечения
@@ -55,11 +56,30 @@ class IcosahedronApp(mglw.WindowConfig):
     title = "D&D 20-sided Die (Icosahedron)"
     window_size = (800, 600)
     aspect_ratio = 800 / 600
+    resource_dir = Path(".").resolve()
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        # Здесь мы позже загрузим наши шейдеры и геометрию
-        pass
+        
+        # Загружаем шейдеры с помощью встроенного менеджера ресурсов
+        self.program = self.load_program(
+            vertex_shader='vertex_shader.glsl',
+            fragment_shader='fragment_shader.glsl'
+        )
+
+        # Получаем массивы вершин и индексов
+        vertices, indices = get_icosahedron_data()
+
+        # Создаем буферы на видеокарте и загружаем в них данные
+        self.vbo = self.ctx.buffer(vertices.tobytes())
+        self.ibo = self.ctx.buffer(indices.tobytes())
+
+        # Создаем VAO: связываем VBO с переменной 'in_position' в вершинном шейдере
+        self.vao = self.ctx.vertex_array(
+            self.program,
+            [(self.vbo, '3f', 'in_position')],
+            index_buffer=self.ibo
+        )
 
     def on_render(self, time: float, frame_time: float):
         # Очищаем экран темно-серым цветом на каждом кадре
