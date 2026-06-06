@@ -45,3 +45,29 @@ def get_icosahedron_data():
     ], dtype='i4')
 
     return vertices, indices
+
+
+import moderngl_window as mglw
+
+class IcosahedronApp(mglw.WindowConfig):
+    # Настройки нашего окна
+    gl_version = (3, 3) # Используем OpenGL 3.3
+    title = "D&D 20-sided Die (Icosahedron)"
+    window_size = (800, 600)
+    aspect_ratio = 800 / 600
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        # Здесь мы позже загрузим наши шейдеры и геометрию
+        pass
+
+    def on_render(self, time: float, frame_time: float):
+        # Очищаем экран темно-серым цветом на каждом кадре
+        self.ctx.clear(0.15, 0.15, 0.15, 1.0)
+        
+        # Здесь позже будет код для отрисовки самого кубика
+        pass
+
+# Этот блок запускает наше приложение, если мы запускаем файл напрямую
+if __name__ == '__main__':
+    mglw.run_window_config(IcosahedronApp)
