@@ -7,12 +7,12 @@ in vec3 in_position;
 uniform mat4 m_proj;
 uniform mat4 m_model;
 
-// Переменная для передачи данных во фрагментный шейдер
-out vec3 v_position;
+// Переименовали переменную для передачи в ГЕОМЕТРИЧЕСКИЙ шейдер
+out vec3 v_geom_position;
 
 void main() {
     // Вычисляем итоговую позицию вершины на экране
     gl_Position = m_proj * m_model * vec4(in_position, 1.0);
-    // Передаем исходную позицию дальше для расчета цвета
-    v_position = in_position;
+    // Передаем исходную позицию дальше
+    v_geom_position = in_position;
 }

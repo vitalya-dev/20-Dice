@@ -63,9 +63,10 @@ class IcosahedronApp(mglw.WindowConfig):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         
-        # Загружаем шейдеры с помощью встроенного менеджера ресурсов
+        # Загружаем все три шейдера с помощью встроенного менеджера
         self.program = self.load_program(
             vertex_shader='vertex_shader.glsl',
+            geometry_shader='geometry_shader.glsl',
             fragment_shader='fragment_shader.glsl'
         )
 
@@ -106,7 +107,8 @@ class IcosahedronApp(mglw.WindowConfig):
         self.program['m_proj'].write(proj.astype('f4'))
         self.program['m_model'].write(model.astype('f4'))
         
-        # Рисуем наш икосаэдр
+        # Рисуем наш икосаэдр всего за один вызов! 
+        # Обводка нарисуется сама благодаря геометрическому шейдеру.
         self.vao.render(moderngl.TRIANGLES)
 # Этот блок запускает наше приложение, если мы запускаем файл напрямую
 if __name__ == '__main__':

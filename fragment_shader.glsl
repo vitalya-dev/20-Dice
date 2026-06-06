@@ -1,17 +1,16 @@
 #version 330
 
-// Получаем данные от вершинного шейдера
-in vec3 v_position;
-
-// НОВАЯ ПЕРЕМЕННАЯ: барицентрические координаты (расстояние до 3 углов треугольника)
+// Получаем данные от геометрического шейдера
+in vec3 v_normal;
 in vec3 v_barycentric;
 
-// Итоговый цвет пикселя на экране
 out vec4 f_color;
 
+uniform mat4 m_model;
+
 void main() {
-    // Вычисляем направление поверхности (нормаль)
-    vec3 normal = normalize(v_position);
+    // Нормаль уже плоская для всей грани, переводим её в model space
+    vec3 normal = normalize(mat3(m_model) * v_normal);
     
     // Задаем направление воображаемого источника света
     vec3 light_dir = normalize(vec3(1.0, 1.0, 1.0));
@@ -24,9 +23,8 @@ void main() {
     vec3 final_color = base_color * lum;
 
     // --- ЛОГИКА ОБВОДКИ ---
-    // Если пиксель находится очень близко к любому из 3 краев (значение меньше 0.03),
-    // закрашиваем его в черный цвет (рисуем обводку).
-    if (v_barycentric.x < 0.03 || v_barycentric.y < 0.03 || v_barycentric.z < 0.03) {
+    // Если пиксель находится очень близко к краю, закрашиваем его в черный
+    if (v_barycentric.x < 0.02 || v_barycentric.y < 0.02 || v_barycentric.z < 0.02) {
         final_color = vec3(0.0, 0.0, 0.0);
     }
     
