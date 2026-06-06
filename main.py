@@ -84,31 +84,30 @@ class IcosahedronApp(mglw.WindowConfig):
         )
 
     def on_render(self, time: float, frame_time: float):
-        # Включаем тест глубины, чтобы грани рисовались в правильном порядке
+        # Включаем тест глубины
         self.ctx.enable(moderngl.DEPTH_TEST)
         
-        # Очищаем экран темно-серым цветом (включая буфер глубины)
+        # Очищаем экран темно-серым цветом
         self.ctx.clear(0.15, 0.15, 0.15, 1.0)
         
-        # 1. Матрица проекции: угол обзора 45 градусов, пропорции окна, ближняя/дальняя плоскости
+        # 1. Матрица проекции: перспектива остается прежней
         proj = Matrix44.perspective_projection(45.0, self.aspect_ratio, 0.1, 100.0)
         
-        # 2. Матрица вида (камеры): стоим в точке (0, 0, 5) и смотрим в центр (0, 0, 0)
-        view = Matrix44.look_at((0.0, 0.0, 5.0), (0.0, 0.0, 0.0), (0.0, 1.0, 0.0))
+        # 2. Матрица трансформации (сдвиг): отодвигаем кубик на 5 единиц назад (вглубь экрана)
+        translation = Matrix44.from_translation((0.0, 0.0, -5.0))
         
-        # 3. Матрица модели: делаем ее единичной, чтобы кубик стоял на месте
-        model = Matrix44.identity()
+        # 3. Матрица вращения: плавно крутим по осям X и Y
+        rotation = Matrix44.from_eulers((time * 0.5, time * 0.8, 0.0))
         
-        # Перемножаем матрицы (получаем ModelView)
-        modelview = model * view
+        # Комбинируем матрицы: получаем чистую матрицу МОДЕЛИ
+        model = translation * rotation
         
         # Передаем готовые матрицы в шейдерную программу
         self.program['m_proj'].write(proj.astype('f4'))
-        self.program['m_modelview'].write(modelview.astype('f4'))
+        self.program['m_model'].write(model.astype('f4'))
         
-        # Даем команду видеокарте нарисовать наш 20-гранник!
+        # Рисуем наш икосаэдр
         self.vao.render(moderngl.TRIANGLES)
-
 # Этот блок запускает наше приложение, если мы запускаем файл напрямую
 if __name__ == '__main__':
     mglw.run_window_config(IcosahedronApp)
