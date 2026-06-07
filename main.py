@@ -63,53 +63,82 @@ class IcosahedronApp(mglw.WindowConfig):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         
-        # Загружаем все три шейдера с помощью встроенного менеджера
+        # 1. Загружаем шейдеры для самого кубика
         self.program = self.load_program(
             vertex_shader='vertex_shader.glsl',
             geometry_shader='geometry_shader.glsl',
             fragment_shader='fragment_shader.glsl'
         )
+        
+        # 2. Загружаем шейдеры для пост-эффекта (пикселизация)
+        self.post_program = self.load_program(
+            vertex_shader='post_vertex.glsl',
+            fragment_shader='post_fragment.glsl'
+        )
 
-        # Получаем массивы вершин и индексов
+        # 3. Геометрия кубика
         vertices, indices = get_icosahedron_data()
-
-        # Создаем буферы на видеокарте и загружаем в них данные
         self.vbo = self.ctx.buffer(vertices.tobytes())
         self.ibo = self.ctx.buffer(indices.tobytes())
-
-        # Создаем VAO: связываем VBO с переменной 'in_position' в вершинном шейдере
         self.vao = self.ctx.vertex_array(
             self.program,
             [(self.vbo, '3f', 'in_position')],
             index_buffer=self.ibo
         )
+        
+        # --- 4. НАСТРОЙКА FBO (НЕВИДИМЫЙ ХОЛСТ) ---
+        # Создаем пустую текстуру размером с наше окно
+        self.render_texture = self.ctx.texture(self.window_size, 4)
+        # Создаем буфер глубины (чтобы кубик был объемным в текстуре)
+        self.depth_attachment = self.ctx.depth_renderbuffer(self.window_size)
+        # Объединяем их в FBO
+        self.fbo = self.ctx.framebuffer(
+            color_attachments=[self.render_texture],
+            depth_attachment=self.depth_attachment
+        )
+        
+        # --- 5. ГЕОМЕТРИЯ ЭКРАНА ---
+        # Создаем плоский прямоугольник на весь экран
+        from moderngl_window import geometry
+        self.quad_vao = geometry.quad_fs()
+        
+        # Говорим шейдеру пост-обработки брать картинку из 0-го слота текстур
+        self.post_program['screen_texture'].value = 0
 
     def on_render(self, time: float, frame_time: float):
-        # Включаем тест глубины
-        self.ctx.enable(moderngl.DEPTH_TEST)
+        # --- ЭТАП 1: РИСУЕМ КУБИК В НЕВИДИМУЮ ТЕКСТУРУ ---
+        # Переключаем "кисть" на наш FBO
+        self.fbo.use()
         
-        # Очищаем экран темно-серым цветом
+        # Включаем 3D-тест глубины и очищаем текстуру
+        self.ctx.enable(moderngl.DEPTH_TEST)
         self.ctx.clear(0.15, 0.15, 0.15, 1.0)
         
-        # 1. Матрица проекции: перспектива остается прежней
         proj = Matrix44.perspective_projection(45.0, self.aspect_ratio, 0.1, 100.0)
-        
-        # 2. Матрица трансформации (сдвиг): отодвигаем кубик на 5 единиц назад (вглубь экрана)
         translation = Matrix44.from_translation((0.0, 0.0, -5.0))
-        
-        # 3. Матрица вращения: плавно крутим по осям X и Y
         rotation = Matrix44.from_eulers((time * 0.5, time * 0.8, 0.0))
-        
-        # Комбинируем матрицы: получаем чистую матрицу МОДЕЛИ
         model = translation * rotation
         
-        # Передаем готовые матрицы в шейдерную программу
         self.program['m_proj'].write(proj.astype('f4'))
         self.program['m_model'].write(model.astype('f4'))
         
-        # Рисуем наш икосаэдр всего за один вызов! 
-        # Обводка нарисуется сама благодаря геометрическому шейдеру.
+        # Рисуем икосаэдр в текстуру
         self.vao.render(moderngl.TRIANGLES)
+        
+        # --- ЭТАП 2: РИСУЕМ ТЕКСТУРУ НА ГЛАВНЫЙ ЭКРАН ---
+        # Возвращаем "кисть" обратно на монитор
+        self.ctx.screen.use()
+        
+        # Отключаем тест глубины (пост-эффект - это просто 2D картинка)
+        self.ctx.disable(moderngl.DEPTH_TEST)
+        self.ctx.clear(0.0, 0.0, 0.0, 1.0)
+        
+        # Привязываем нашу отрендеренную текстуру кубика к нулевому слоту
+        self.render_texture.use(location=0)
+        
+        # Рисуем плоский прямоугольник, используя шейдер пост-обработки (там живет наша пикселизация)
+        self.quad_vao.render(self.post_program)
+        
 # Этот блок запускает наше приложение, если мы запускаем файл напрямую
 if __name__ == '__main__':
     mglw.run_window_config(IcosahedronApp)
